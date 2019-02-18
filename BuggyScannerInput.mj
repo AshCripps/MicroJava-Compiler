@@ -1,0 +1,67 @@
+// Test input for the MicroJava scanner
+//*****************************************************
+// invoke as: java MJ.TestScanner BuggyScannerInput.mj
+//*****************************************************
+
+// identifiers
+x 
+Just4Fun 
+
+// numbers
+0
+123
+00123
+
+// character constants
+'x'
+'\r'
+'\n'
+'\t'
+
+// operators
++  // plus
+-  // minus
+*  // times
+/  // slash
+%  // rem
+== // eql
+!= // neq
+<  // lss
+<= // leq
+>  // gtr
+>= // geq
+=  // assign
+;  // semicolon
+,  // comma
+.  // period
+(  // lpar
+)  // rpar
+[  // lbrack
+]  // rbrack
+{  // lbrace
+}  // rbrace
+
+// keywords
+class
+else
+final
+if
+new
+print
+program
+read
+return
+void
+while
+
+// illegal number
+9999999999
+
+// illegal character constants
+'abc'
+'\rx'
+''
+'x
+
+// unknown token
+$
