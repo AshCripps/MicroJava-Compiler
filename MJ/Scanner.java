@@ -103,6 +103,7 @@ public class Scanner {
 			case ';':
 				nextCh(); t.kind = semicolon;
 				break;
+
 			case '.':
 				nextCh(); t.kind = period;
 				break;
@@ -225,19 +226,11 @@ public class Scanner {
 	}
 
 	private static void readNumber(Token t){
-		t.val = Character.getNumericValue(ch);
-
-		while (ch != ' ' && ch != '\n' && ch != eofCh){
-			nextCh();
-			if (Character.isDigit(ch)){
-				try{
-					t.string += ch;
-				}catch (Exception e){
-					t.kind = none;
-				}
-			} else {
-				t.kind = none;
-			}
+		t.string = "";
+		//while (ch != ' ' && ch != '\n' && ch != eofCh){
+		while (Character.isDigit(ch)){
+				t.string += ch;
+				nextCh();
 		}
 		try {
 			t.val = Integer.parseInt(t.string);
@@ -261,7 +254,6 @@ public class Scanner {
 			return;
 		}
 		nextCh();
-		System.out.println(t.string);
 
 		if (t.string.length() == 2){
 			if (t.string.charAt(0) != '\\'){
@@ -276,14 +268,12 @@ public class Scanner {
 				} else {
 					t.kind = charCon;
 					t.val = t.string.chars().sum();
-					nextCh();
 				}
 			}
 		} else if (t.string.length() == 1){
 			if (Character.isLetter(t.string.charAt(0))){
 				t.kind = charCon;
 				t.val = t.string.chars().sum();
-				nextCh();
 			}else {
 				System.err.println("Not a valid char");
 				t.kind = charCon;

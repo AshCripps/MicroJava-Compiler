@@ -59,7 +59,7 @@ public class Parser {
 	public  static int errors;  // error counter
 	private static int errDist;	// no. of correctly recognized tokens since last error
 
-	private static BitSet exprStart, statStart, statSeqFollow, declStart, declFollow;
+	private static BitSet exprStart, statStart, statSeqFollow, declStart, declFollow, relopStart, statSync;
 
 	//------------------- auxiliary methods ----------------------
 	private static void scan() {
@@ -91,10 +91,276 @@ public class Parser {
 
 	// Program = "program" ident {ConstDecl | ClassDecl | VarDecl} '{' {MethodDecl} '}'.
 	private static void Program() {
-		TODO  // add parsing actions
+		check(program_);
+		check(ident);
+		for(;;){
+			if (sym == final_){
+				ConstDecl();
+			}else if (sym == class_){
+				ClassDecl();
+			}else if (sym == ident){
+				VarDecl();
+			}else if (sym == lbrace || sym == eof) {
+				break;
+			} else {
+				error("invalid declaration");
+				do scan(); while (sym != final_ && sym != class_ && sym != lbrace && sym != eof);
+				errDist = 0;
+			}
+		}
+		check(lbrace);
+		while (sym == void_ || sym == ident){
+			MethodDecl();
+		}
+		check(rbrace);
 	}
 
-	TODO  // add parsing methods for all productions
+	//ConstDecl =  "final" Type ident "=" (number | charConst) ";".
+	private static void ConstDecl(){
+		check(final_);
+		Type();
+		check(ident);
+		check(assign);
+		if (sym == number) scan();
+		else if(sym == charCon) scan();
+		else error("Invalid ConstDecl");
+		check(semicolon);
+	}
+
+	//VarDecl =  Type ident {"," ident } ";".
+	private static void VarDecl(){
+		Type();
+			check(ident);
+			while (sym == comma){
+				scan();
+				check(ident);
+			}
+		check(semicolon);
+	}
+
+	//ClassDecl =  "class" ident "{" {VarDecl} "}".
+	private static void ClassDecl(){
+		check(class_);
+		check(ident);
+		check(lbrace);
+		while(sym == ident){
+			VarDecl();
+		}
+		check(rbrace);
+	}
+
+	//MethodDecl =  (Type | "void") ident "(" [FormPars] ")" {VarDecl} Block.
+	private static void MethodDecl(){
+
+		if (sym == ident){
+			Type();
+		}else if (sym == void_){
+			scan();
+		}else {
+			error("Invalid Method Declaration");
+		}
+		check(ident);
+		check(lpar);
+		if (sym == ident) Formpars();
+		check(rpar);
+			while (sym == ident) VarDecl();
+		Block();
+	}
+
+	//FormPars =  Type ident  {"," Type ident}.
+	private static void Formpars(){
+		Type();
+		check(ident);
+			while (sym == comma){
+				scan();
+				Type();
+				check(ident);
+		}
+
+	}
+
+	//Type =  ident ["[" "]"].
+	private static void Type(){
+		check(ident);
+		if (sym == lbrack){
+			scan();
+			check(rbrack);
+		}
+	}
+
+	//Block = "{" {Statement} "}".
+	private static void Block(){
+		check(lbrace);
+	 	while (sym != rbrace && sym != eof){
+			Statement();
+		}
+		check(rbrace);
+	}
+
+	/*Statement =  Designator ("=" Expr | ActPars) ";"
+	|  "if" "(" Condition ")" Statement ["else" Statement]
+	|  "while" "(" Condition ")" Statement
+	|  "return" [Expr] ";"
+	|  "read" "(" Designator ")" ";"
+	|  "print" "(" Expr ["," number] ")" ";"
+	|  Block
+	|  ";". */
+	private static void Statement(){
+		if (!statStart.get(sym)){
+			error("invalid start of statement");
+			while(!statSync.get(sym)) scan();
+			errDist = 0;
+		}
+		if (sym == ident){
+			Designator();
+			if (sym == assign){
+				scan();
+				Expr();
+			}else if (sym == lpar){
+				ActPars();
+			} else error("Invalid Assignment or call");
+			check(semicolon);
+		}else if (sym == if_) {
+			scan();
+			check(lpar);
+			Condition();
+			check(rpar);
+			Statement();
+			if (sym == else_){
+				scan();
+				Statement();
+			}
+		}else if (sym == while_){
+			scan();
+			check(lpar);
+			Condition();
+			check(rpar);
+			Statement();
+		}else if (sym == return_){
+			scan();
+			if (sym == minus || sym == ident){
+				Expr();
+			}
+			check(semicolon);
+		}else if (sym == read_){
+			scan();
+			check(lpar);
+			Designator();
+			check(rpar);
+			check(semicolon);
+		}else if (sym == print_){
+			scan();
+			check(lpar);
+			Expr();
+			if (sym == comma){
+				scan();
+				check(number);
+			}
+			check(rpar);
+			check(semicolon);
+		}else if (sym == lbrace){
+			Block();
+		}else if (sym == semicolon){
+			scan();
+		}else error("Invalid start of statement");
+	}
+
+	//ActPars =  "(" [ Expr {"," Expr} ] ")".
+	private static void ActPars(){
+		check(lpar);
+		if (exprStart.get(sym)){
+			Expr();
+			while (sym == comma){
+					scan();
+					Expr();
+			}
+		}
+		check(rpar);
+	}
+
+	//Condition =  Expr Relop Expr.
+	private static void Condition(){
+		Expr();
+		Relop();
+		Expr();
+	}
+
+	//Relop =  "==" | "!=" | ">" | ">=" | "<" | "<=".
+	private static void Relop(){
+		if (relopStart.get(sym)) scan();
+		else error("invalid Relop");
+	}
+
+	//Expr =  ["-"] Term {Addop Term}.
+	private static void Expr(){
+		if (sym == minus) scan();
+		Term();
+			while (sym == minus || sym == plus){
+				Addop();
+				Term();
+		}
+	}
+
+	//Term =  Factor {Mulop Factor}.
+	private static void Term(){
+		Factor();
+			while (sym == times || sym == slash || sym == rem){
+				Mulop();
+				Factor();
+		}
+	}
+
+	//Factor =  Designator [ActPars] |  number |  charConst |  "new" ident ["[" Expr "]"] |  "(" Expr ")".
+	private static void Factor(){
+		if (sym == ident){
+			Designator();
+		}else if (sym == number){
+			scan();
+		} else if (sym == charCon){
+			scan();
+		} else if (sym == new_){
+			scan();
+			check(ident);
+			if (sym == lbrack){
+				scan();
+				Expr();
+				check(rbrack);
+			}
+		} else if (sym == lpar){
+			scan();
+			Expr();
+			check(rpar);
+		}else {
+			error("Invalid Factor");
+		}
+	}
+
+	//Designator =  ident {"." ident | "[" Expr "]"}.
+	private static void Designator(){
+		check(ident);
+		for (;;){
+			if (sym == period){
+				scan();
+				check(ident);
+			} else if (sym == lbrack) {
+				scan();
+				Expr();
+				check(rbrack);
+			}else break;
+		}
+	}
+
+	//Addop =  "+" | "-".
+	private static void Addop(){
+		if (sym == plus || sym == minus) scan();
+		else error("Not valid addop");
+	}
+
+	//Mulop = "*" | "/" | "%".
+	private static void Mulop(){
+		if (sym == times || sym == slash || sym == rem) scan();
+		else error("Invalid Mulop");
+	}
 
 	public static void parse() {
 		// initialize symbol sets
@@ -106,6 +372,10 @@ public class Parser {
 		s.set(ident); s.set(if_); s.set(while_); s.set(read_);
 		s.set(return_); s.set(print_); s.set(lbrace); s.set(semicolon);
 
+		s = new BitSet(64); statSync = s;
+		s.set(eof); s.set(if_); s.set(while_); s.set(read_);
+		s.set(return_); s.set(print_); s.set(lbrace); s.set(semicolon);
+
 		s = new BitSet(64); statSeqFollow = s;
 		s.set(rbrace); s.set(eof);
 
@@ -115,6 +385,9 @@ public class Parser {
 		s = new BitSet(64); declFollow = s;
 		s.set(lbrace); s.set(void_); s.set(eof);
 
+		s = new BitSet(64); relopStart = s;
+		s.set(eql); s.set(neq);  s.set(gtr); s.set(geq); s.set(lss); s.set(leq);
+
 		// start parsing
 		errors = 0; errDist = 3;
 		scan();
@@ -123,11 +396,3 @@ public class Parser {
 	}
 
 }
-
-
-
-
-
-
-
-
