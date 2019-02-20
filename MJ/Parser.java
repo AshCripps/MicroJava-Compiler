@@ -168,8 +168,8 @@ public class Parser {
 		check(lbrace);
 		while(sym == ident){
 			VarDecl();
-			Tab.find(name).locals = Tab.curScope.locals;
-			//curClass.locals = Tab.curScope.locals;
+			Tab.find(name).type.fields = Tab.curScope.locals;
+			Tab.find(name).type.nFields = Tab.curScope.nVars;
 		}
 		check(rbrace);
 		Tab.closeScope();
