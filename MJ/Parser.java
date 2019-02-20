@@ -60,6 +60,7 @@ public class Parser {
 	private static int errDist;	// no. of correctly recognized tokens since last error
 
 	private static BitSet exprStart, statStart, statSeqFollow, declStart, declFollow, relopStart, statSync;
+	private static Obj curMeth, curClass;
 
 	//------------------- auxiliary methods ----------------------
 	private static void scan() {
@@ -93,6 +94,8 @@ public class Parser {
 	private static void Program() {
 		check(program_);
 		check(ident);
+		Tab.insert(Obj.Prog, t.string, Tab.noType);
+		Tab.openScope();
 		for(;;){
 			if (sym == final_){
 				ConstDecl();
@@ -113,79 +116,118 @@ public class Parser {
 			MethodDecl();
 		}
 		check(rbrace);
+		Tab.dumpScope(Tab.curScope.locals);
+		Tab.closeScope();
 	}
 
 	//ConstDecl =  "final" Type ident "=" (number | charConst) ";".
 	private static void ConstDecl(){
 		check(final_);
-		Type();
+		Struct type = Type();
 		check(ident);
+		String name = t.string;
+		Tab.insert(Obj.Con, name, type);
+
 		check(assign);
-		if (sym == number) scan();
-		else if(sym == charCon) scan();
+		if (sym == number) {
+			scan();
+			Tab.find(name).val = t.val;
+		}
+		else if(sym == charCon) {
+			scan();
+			Tab.find(name).val = t.val;
+		}
 		else error("Invalid ConstDecl");
 		check(semicolon);
 	}
 
 	//VarDecl =  Type ident {"," ident } ";".
 	private static void VarDecl(){
-		Type();
+		Struct type = Type();
+		check(ident);
+		String name = t.string;
+		Tab.insert(Obj.Var, name, type);
+		while (sym == comma){
+			scan();
 			check(ident);
-			while (sym == comma){
-				scan();
-				check(ident);
-			}
+			name = t.string;
+			Tab.insert(Obj.Var, name, type);
+		}
 		check(semicolon);
 	}
 
 	//ClassDecl =  "class" ident "{" {VarDecl} "}".
 	private static void ClassDecl(){
+		Struct type = Tab.nullType;
+		String name;
 		check(class_);
 		check(ident);
+		name = t.string;
+		curClass = Tab.insert(Obj.Type, name, type);
+		Tab.openScope();
 		check(lbrace);
 		while(sym == ident){
 			VarDecl();
+			Tab.find(name).locals = Tab.curScope.locals;
+			//curClass.locals = Tab.curScope.locals;
 		}
 		check(rbrace);
+		Tab.closeScope();
 	}
 
 	//MethodDecl =  (Type | "void") ident "(" [FormPars] ")" {VarDecl} Block.
 	private static void MethodDecl(){
-
+		Struct type = Tab.noType;
 		if (sym == ident){
-			Type();
+			type = Type();
 		}else if (sym == void_){
 			scan();
 		}else {
 			error("Invalid Method Declaration");
 		}
 		check(ident);
+		String name = t.string;
+		curMeth = Tab.insert(Obj.Meth, name, type);
+		Tab.openScope();
 		check(lpar);
 		if (sym == ident) Formpars();
+		curMeth.nPars = Tab.curScope.nVars;
 		check(rpar);
 			while (sym == ident) VarDecl();
+			curMeth.locals = Tab.curScope.locals;
 		Block();
+		Tab.closeScope();
 	}
 
 	//FormPars =  Type ident  {"," Type ident}.
 	private static void Formpars(){
-		Type();
+		Struct type;
+		String name;
+		type = Type();
 		check(ident);
+		name = t.string;
+		Tab.insert(Obj.Var, name, type);
 			while (sym == comma){
 				scan();
-				Type();
+				type = Type();
 				check(ident);
+				name = t.string;
+				Tab.insert(Obj.Var, name, type);
 		}
 
 	}
 
 	//Type =  ident ["[" "]"].
-	private static void Type(){
+	private static Struct Type(){
 		check(ident);
+		Obj o = Tab.find(t.string);
+		Struct type = o.type;
 		if (sym == lbrack){
+			type = new Struct(Struct.Arr, type); //Passing array
 			scan();
 			check(rbrack);
 		}
+		return type;
 	}
 
 	//Block = "{" {Statement} "}".
@@ -304,9 +346,9 @@ public class Parser {
 	//Term =  Factor {Mulop Factor}.
 	private static void Term(){
 		Factor();
-			while (sym == times || sym == slash || sym == rem){
-				Mulop();
-				Factor();
+		while (sym == times || sym == slash || sym == rem){
+			Mulop();
+			Factor();
 		}
 	}
 
@@ -321,6 +363,7 @@ public class Parser {
 		} else if (sym == new_){
 			scan();
 			check(ident);
+			Tab.find(t.string);
 			if (sym == lbrack){
 				scan();
 				Expr();
@@ -338,10 +381,12 @@ public class Parser {
 	//Designator =  ident {"." ident | "[" Expr "]"}.
 	private static void Designator(){
 		check(ident);
+		Tab.find(t.string);
 		for (;;){
 			if (sym == period){
 				scan();
 				check(ident);
+				Tab.find(t.string);
 			} else if (sym == lbrack) {
 				scan();
 				Expr();
@@ -361,6 +406,7 @@ public class Parser {
 		if (sym == times || sym == slash || sym == rem) scan();
 		else error("Invalid Mulop");
 	}
+
 
 	public static void parse() {
 		// initialize symbol sets
@@ -389,6 +435,7 @@ public class Parser {
 		s.set(eql); s.set(neq);  s.set(gtr); s.set(geq); s.set(lss); s.set(leq);
 
 		// start parsing
+		Tab.init(); //Initialize symbol table
 		errors = 0; errDist = 3;
 		scan();
 		Program();
