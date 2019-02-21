@@ -60,7 +60,7 @@ public class Parser {
 	private static int errDist;	// no. of correctly recognized tokens since last error
 
 	private static BitSet exprStart, statStart, statSeqFollow, declStart, declFollow, relopStart, statSync;
-	private static Obj curMeth, curClass;
+	private static Obj curMeth;
 
 	//------------------- auxiliary methods ----------------------
 	private static void scan() {
@@ -126,16 +126,22 @@ public class Parser {
 		Struct type = Type();
 		check(ident);
 		String name = t.string;
-		Tab.insert(Obj.Con, name, type);
+		Obj obj = Tab.insert(Obj.Con, name, type);
 
 		check(assign);
 		if (sym == number) {
+			if (type != Tab.intType){
+				error("Int const expected");
+			}
 			scan();
-			Tab.find(name).val = t.val;
+			obj.val = t.val;
 		}
 		else if(sym == charCon) {
+			if (type != Tab.charType){
+				error("Cha const expected");
+			}
 			scan();
-			Tab.find(name).val = t.val;
+			obj.val = t.val;
 		}
 		else error("Invalid ConstDecl");
 		check(semicolon);
@@ -158,18 +164,18 @@ public class Parser {
 
 	//ClassDecl =  "class" ident "{" {VarDecl} "}".
 	private static void ClassDecl(){
-		Struct type = Tab.nullType;
+		Struct type = new Struct(Struct.Class);
 		String name;
 		check(class_);
 		check(ident);
 		name = t.string;
-		curClass = Tab.insert(Obj.Type, name, type);
+		curMeth = Tab.insert(Obj.Type, name, type);
 		Tab.openScope();
 		check(lbrace);
 		while(sym == ident){
 			VarDecl();
-			Tab.find(name).type.fields = Tab.curScope.locals;
-			Tab.find(name).type.nFields = Tab.curScope.nVars;
+			type.fields = Tab.curScope.locals;
+			type.nFields = Tab.curScope.nVars;
 		}
 		check(rbrace);
 		Tab.closeScope();
@@ -334,12 +340,28 @@ public class Parser {
 	}
 
 	//Expr =  ["-"] Term {Addop Term}.
-	private static void Expr(){
-		if (sym == minus) scan();
-		Term();
-			while (sym == minus || sym == plus){
-				Addop();
-				Term();
+	private static Operand Expr(){
+		Operand x;
+		if (sym == minus) {
+			scan();
+			x = Term();
+			if (x.type != Tab.intType) error("operand must be of type int");
+			if (x.kind == Operand.Con) x.val = - x.val;
+			else{
+				Code.load(x);
+				Code.put(Code.neg);
+			}
+		}
+		else{
+			x = Term();
+			if (x.type != Tab.intType) error("operand must be of type int");
+			else{
+				Code.load(x);
+			}
+		}
+		while (sym == minus || sym == plus){
+			Addop();
+			Term();
 		}
 	}
 
@@ -381,13 +403,23 @@ public class Parser {
 	//Designator =  ident {"." ident | "[" Expr "]"}.
 	private static void Designator(){
 		check(ident);
-		Tab.find(t.string);
+		Obj obj = Tab.find(t.string);
+		Operand x = new Operand(obj);
 		for (;;){
 			if (sym == period){
 				scan();
 				check(ident);
-				Tab.find(t.string);
+				String fname = t.string;
+				if (x.type.kind == Struct.Class){
+					Code.load(x);
+					Obj fld = Tab.findField(fname, x.type);
+					x.kind = Operand.Fld;
+					x.adr = fld.adr;
+					x.type = fld.type;
+				}else error(name + "is not an Object");
+
 			} else if (sym == lbrack) {
+				Code.load(x);
 				scan();
 				Expr();
 				check(rbrack);
@@ -436,6 +468,7 @@ public class Parser {
 
 		// start parsing
 		Tab.init(); //Initialize symbol table
+		Code.init(); //Initialize code buffer
 		errors = 0; errDist = 3;
 		scan();
 		Program();

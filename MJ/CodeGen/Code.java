@@ -111,7 +111,42 @@ public class Code {
 
 	// Load the operand x to the expression stack
 	public static void load(Operand x) {
-		TODO  // fill in the code
+		switch (x.kind) {
+		case Operand.Con:
+			if (0 <= x.val && x.val <= 5) put(const0+ x.val);
+			else if (x.val == -1) put(const_m1);
+			else {
+				put(const_);
+				put4(x.val);
+			}
+			break;
+		case Operand.Static:
+			put(getstatic);
+			put2(x.adr);
+			break;
+		case Operand.Local:
+			if (0 <= x.adr && x.adr <= 3) put(load0+ x.adr);
+			else {
+				put(load);
+				put(x.adr);
+			}
+			break;
+		case Operand.Fld:
+		  // assert: object base address is on the stack
+			put(getfield);
+			put2(x.adr);
+			break;
+		case Operand.Elem:
+			// assert: base address and index are on stack
+			if (x.type == Tab.charType) put(baload);
+			else put(aload);
+			break;
+		case Operand.Stack:
+			break; // nothing (already loaded)
+		default:
+			Parser.error("cannot load this value");
+		}
+		x.kind = Operand.Stack
 	}
 
 	// Generate an assignment x = y
@@ -123,17 +158,19 @@ public class Code {
 
 	// Unconditional jump
 	public static void putJump(int adr) {
-		TODO  // fill in the code
+		put(jmp);
+		put2(adr);
 	}
 
 	// Conditional jump if op is false
 	public static void putFalseJump(int op, int adr) {
-		TODO  // fill in the code
+		ut(jeq + inverse[op]);
+		put2(adr);
 	}
 
 	// patch jump target at adr so that it jumps to the current pc
 	public static void fixup(int adr) {
-		TODO  // fill in the code
+		put2(adr, pc);
 	}
 
 	//------------------------------------
@@ -162,6 +199,3 @@ public class Code {
 		}
 	}
 }
-
-
-
