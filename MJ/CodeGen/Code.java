@@ -146,12 +146,30 @@ public class Code {
 		default:
 			Parser.error("cannot load this value");
 		}
-		x.kind = Operand.Stack
+		x.kind = Operand.Stack;
 	}
 
 	// Generate an assignment x = y
 	public static void assign(Operand x, Operand y) {
-		TODO  // fill in the code
+		load(y);
+		if (x.kind == Operand.Local){
+			if (0 <= x.adr && x.adr <= 3) put(store0+ x.adr);
+			else {
+				put(store);
+				put(x.adr);
+			}
+		}else if (x.kind == Operand.Static){
+			put(putstatic);
+			put2(x.adr);
+		}else if (x.kind == Operand.Fld){
+			put(putfield);
+			put2(x.adr);
+		}else if (x.kind == Operand.Elem){
+			//Distinction
+			if(x.type == Tab.charType){
+				put(bastore);
+			}else put (astore);
+		}
 	}
 
 	//------------- jumps ---------------
@@ -164,7 +182,7 @@ public class Code {
 
 	// Conditional jump if op is false
 	public static void putFalseJump(int op, int adr) {
-		ut(jeq + inverse[op]);
+		put(jeq + inverse[op]);
 		put2(adr);
 	}
 
