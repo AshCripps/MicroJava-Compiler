@@ -117,6 +117,7 @@ public class Parser {
 		}
 		check(rbrace);
 		Tab.dumpScope(Tab.curScope.locals);
+		Code.dataSize = Tab.curScope.nVars;
 		Tab.closeScope();
 	}
 
@@ -185,7 +186,7 @@ public class Parser {
 	private static void MethodDecl(){
 		Struct type = Tab.noType;
 		String name;
-		int n;
+		int n = 0;
 		if (sym == ident){
 			type = Type();
 		}else if (sym == void_){
@@ -200,12 +201,12 @@ public class Parser {
 		check(lpar);
 		if (sym == ident) {
 			n = Formpars();
-			curMeth.nPars = n;
-			if (name.equals("main")){
-				Code.mainPc = Code.pc;
-				if (curMeth.type != Tab.noType) error("Main method must be void");
-				if (curMeth.nPars != 0) error("Main method must not have parameters");
-			}
+		}
+		curMeth.nPars = n;
+		if (name.equals("main")){
+			Code.mainPc = Code.pc;
+			if (curMeth.type != Tab.noType) error("Main method must be void");
+			if (curMeth.nPars != 0) error("Main method must not have parameters");
 		}
 		curMeth.nPars = Tab.curScope.nVars;
 		check(rpar);
@@ -219,7 +220,8 @@ public class Parser {
 		if (curMeth.type == Tab.noType) {
 			Code.put(Code.exit);
 			Code.put(Code.return_);
-		} else {  // end of function reached without a return statementCode.put(Code.trap);
+		} else {  // end of function reached without a return statement
+			Code.put(Code.trap);
 			Code.put(1);
 		}
 		Tab.closeScope();
