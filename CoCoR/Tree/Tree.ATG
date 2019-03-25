@@ -1,0 +1,64 @@
+COMPILER Tree
+
+class Node {
+	String name;
+	Node left, right;
+}
+
+void createSpace(int n){
+	for (int i = 0; i < n; i++){
+		System.out.print(" ");
+	}
+}
+
+void printTree(Node n, int level) {
+	boolean hasChild = n.left != null && n.right != null;
+	createSpace(level);
+	System.out.print("(" + n.name);
+	if (hasChild) System.out.println("");
+
+	if (hasChild){
+		createSpace(level);
+		printTree(n.left, level+1);
+		createSpace(level);
+		printTree(n.right, level+1);
+
+	}
+
+	if (hasChild) createSpace(level);
+
+	System.out.print(")");
+	System.out.println("");
+}
+
+CHARACTERS
+	letter = 'a' .. 'z' + 'A' .. 'Z'.
+	tab = '\t'.
+	cr = '\r'.
+	lf = '\n'.
+
+TOKENS
+	ident = letter {letter}.
+
+COMMENTS
+	FROM "//" TO cr lf
+
+IGNORE
+	tab + cr + lf
+
+PRODUCTIONS
+  Tree =                      								(. Node rootNode; .)
+  Node<out rootNode>                      		(. printTree(rootNode, 0); .)
+	.
+
+  Node<out Node node> =
+  "("                                         (. node = new Node(); node.name = ""; .)
+	   [ ident                                  (. node.name = t.val; .)
+ 		   [ Node<out node.left>
+			   Node<out node.right>
+			 ]
+		 ]
+	")"
+	.
+
+END Tree.
