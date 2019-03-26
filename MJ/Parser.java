@@ -1,6 +1,3 @@
-/*  MicroJava Parser (HM 06-12-28)
-    ================
-*/
 package MJ;
 
 import java.util.*;
@@ -94,9 +91,9 @@ public class Parser {
 	private static void Program() {
 		check(program_);
 		check(ident);
-		Tab.insert(Obj.Prog, t.string, Tab.noType);
-		Tab.openScope();
-		for(;;){
+		Tab.insert(Obj.Prog, t.string, Tab.noType); //Insert program to symtable
+		Tab.openScope(); //Open program scope
+		for(;;){ //Endless loop
 			if (sym == final_){
 				ConstDecl();
 			}else if (sym == class_){
@@ -106,8 +103,8 @@ public class Parser {
 			}else if (sym == lbrace || sym == eof) {
 				break;
 			} else {
-				error("invalid declaration");
-				do scan(); while (sym != final_ && sym != class_ && sym != lbrace && sym != eof);
+				error("Invalid declaration");
+				do scan(); while (sym != final_ && sym != class_ && sym != lbrace && sym != eof); //Sync point
 				errDist = 0;
 			}
 		}
@@ -116,9 +113,9 @@ public class Parser {
 			MethodDecl();
 		}
 		check(rbrace);
-		Tab.dumpScope(Tab.curScope.locals);
-		Code.dataSize = Tab.curScope.nVars;
-		Tab.closeScope();
+		Tab.dumpScope(Tab.curScope.locals);  //Dump scope variables
+		Code.dataSize = Tab.curScope.nVars; //Set number of vars
+		Tab.closeScope(); //Close program scope
 	}
 
 	//ConstDecl =  "final" Type ident "=" (number | charConst) ";".
@@ -127,19 +124,19 @@ public class Parser {
 		Struct type = Type();
 		check(ident);
 		String name = t.string;
-		Obj obj = Tab.insert(Obj.Con, name, type);
+		Obj obj = Tab.insert(Obj.Con, name, type); //Insert Const in symtable
 
 		check(assign);
 		if (sym == number) {
-			if (type != Tab.intType){
-				error("Int const expected");
+			if (type != Tab.intType){ //If the expected type is not int, a char is expected
+				error("Char const expected");
 			}
 			scan();
 			obj.val = t.val;
 		}
 		else if(sym == charCon) {
 			if (type != Tab.charType){
-				error("Cha const expected");
+				error("Int const expected"); //If the expected type is not char, an int is expected
 			}
 			scan();
 			obj.val = t.val;
@@ -170,92 +167,93 @@ public class Parser {
 		check(class_);
 		check(ident);
 		name = t.string;
-		curMeth = Tab.insert(Obj.Type, name, type);
-		Tab.openScope();
+		curMeth = Tab.insert(Obj.Type, name, type); //Track the current class being compiled
+		Tab.openScope(); //Open class scope
 		check(lbrace);
 		while(sym == ident){
 			VarDecl();
-			type.fields = Tab.curScope.locals;
-			type.nFields = Tab.curScope.nVars;
+			type.fields = Tab.curScope.locals; //Set the fields of the class
+			type.nFields = Tab.curScope.nVars; //Set the number of fields expected
 		}
 		check(rbrace);
-		Tab.closeScope();
+		Tab.closeScope(); //Close class scope
 	}
 
 	//MethodDecl =  (Type | "void") ident "(" [FormPars] ")" {VarDecl} Block.
 	private static void MethodDecl(){
-		Struct type = Tab.noType;
+		Struct type = Tab.noType; //Set to void by default
 		String name;
-		int n = 0;
+		int n = 0; //Set number of formpars to 0 by default
 		if (sym == ident){
-			type = Type();
+			type = Type(); //Change return type of the method
 		}else if (sym == void_){
 			scan();
 		}else {
-			error("Invalid Method Declaration");
+			error("Invalid Method Declaration"); //Must be a type or void
 		}
 		check(ident);
 		name = t.string;
-		curMeth = Tab.insert(Obj.Meth, name, type);
-		Tab.openScope();
+		curMeth = Tab.insert(Obj.Meth, name, type); //keep track of the current method
+		Tab.openScope(); //Open the methods scope
 		check(lpar);
 		if (sym == ident) {
-			n = Formpars();
+			n = Formpars(); //return the number of formpars expected
 		}
-		curMeth.nPars = n;
+		curMeth.nPars = n; //Set this methods number of formpars
 		if (name.equals("main")){
-			Code.mainPc = Code.pc;
+			Code.mainPc = Code.pc; //Set current method as main
 			if (curMeth.type != Tab.noType) error("Main method must be void");
 			if (curMeth.nPars != 0) error("Main method must not have parameters");
 		}
 		curMeth.nPars = Tab.curScope.nVars;
 		check(rpar);
 			while (sym == ident) VarDecl();
-		curMeth.locals = Tab.curScope.locals;
-		curMeth.adr = Code.pc;
+		curMeth.locals = Tab.curScope.locals; //Set methods local variables
+		curMeth.adr = Code.pc; //Set methods address for scope
 		Code.put(Code.enter);
-		Code.put(curMeth.nPars);
-		Code.put(Tab.curScope.nVars);
+		Code.put(curMeth.nPars); //Put the number of parameters on the code buffer
+		Code.put(Tab.curScope.nVars); //Put the number of variables on the code buffer
 		Block();
 		if (curMeth.type == Tab.noType) {
 			Code.put(Code.exit);
-			Code.put(Code.return_);
+			Code.put(Code.return_); //Return from this method
 		} else {  // end of function reached without a return statement
 			Code.put(Code.trap);
 			Code.put(1);
 		}
-		Tab.closeScope();
+		Tab.closeScope(); //Close the method scope
 	}
 
 	//FormPars =  Type ident  {"," Type ident}.
 	private static int Formpars(){
-		int n = 0;
+		int n = 0; //Keep track of the number of formpars to ensure the method recieves enough actpars
 		Struct type;
 		String name;
-		type = Type();
+		type = Type(); //Receive type of parameter
 		check(ident);
 		name = t.string;
-		Tab.insert(Obj.Var, name, type);
+		Tab.insert(Obj.Var, name, type); //Insert parameter into symtable
 		n++;
 			while (sym == comma){
 				scan();
 				type = Type();
 				check(ident);
 				name = t.string;
-				Tab.insert(Obj.Var, name, type);
+				Tab.insert(Obj.Var, name, type); //Insert parameter into symtable
 				n++;
 		}
-		return n;
+		return n; //Return number of formpars
 
 	}
 
 	//Type =  ident ["[" "]"].
 	private static Struct Type(){
 		check(ident);
-		Obj o = Tab.find(t.string);
+		Obj o = Tab.find(t.string); //Check in symtable for the type
+		if (o.kind == Obj.Var) error ("Type expected"); //The type cannot be a variable - must be a class or predefined type
 		Struct type = o.type;
 		if (sym == lbrack){
-			type = new Struct(Struct.Arr, type); //Passing array
+			type = new Struct(Struct.Arr, type); //Turn type into an array of type
 			scan();
 			check(rbrack);
 		}
@@ -282,10 +280,10 @@ public class Parser {
 	|  Block
 	|  ";". */
 	private static void Statement(){
-		Operand x, y;
+		Operand x, y; //Hold the operands from Designator or Expr
 		int op;
 		if (!statStart.get(sym)){
-			error("invalid start of statement");
+			error("Invalid start of statement");
 			while(!statSync.get(sym)) scan();
 			errDist = 0;
 		}
@@ -294,10 +292,11 @@ public class Parser {
 			if (sym == assign){
 				scan();
 				y = Expr();
-				if (y.type.assignableTo(x.type)) Code.assign(x, y);
+				if (y.type.assignableTo(x.type)) Code.assign(x, y); //Check expr can be assigned to Designator
 				else error("Invalid Types");
 			}else if (sym == lpar){
-				ActPars();
+				if (x.kind != Operand.Meth) error("Called object is not a method"); //Must be a method
+				ActPars(x); //Pass method to actpars
 			} else error("Invalid Assignment or call");
 			check(semicolon);
 		}else if (sym == if_) {
@@ -305,40 +304,41 @@ public class Parser {
 			check(lpar);
 			op = Condition();
 			check(rpar);
-			Code.putFalseJump(op, 0);
-			int adr = Code.pc - 2;
+			Code.putFalseJump(op, 0); //Placeholder for if statment to check for else
+			int adr = Code.pc - 2; //Go back two spaces in instructions to check for else
 			Statement();
 			if (sym == else_){
 				scan();
 				Code.putJump(0);
 				int adr2 = Code.pc - 2;
-				Code.fixup(adr);
+				Code.fixup(adr); //Replace if Placeholder instruction
 				Statement();
-				Code.fixup(adr2);
+				Code.fixup(adr2); //Replace else placeholder instruction
 			}
-			Code.fixup(adr);
+			Code.fixup(adr); //Replace if placeholder jump
 		}else if (sym == while_){
 			scan();
-			int top = Code.pc;
+			int top = Code.pc; //Set position of top of while instruction
 			check(lpar);
 			op = Condition();
 			check(rpar);
-			Code.putFalseJump(op, 0);
+			Code.putFalseJump(op, 0); //Placeholder for while statement
 			int adr = Code.pc - 2;
 			Statement();
-			Code.putJump(top);
-			Code.fixup(adr);
+			Code.putJump(top); //Put jump at top of while instruction
+			Code.fixup(adr); //Replace placholder
 		}else if (sym == return_){
 			scan();
+			if (curMeth.type == Tab.noType){ //Ensure method is not void
+				error("Void method must not return a value");
+			}
 			if (sym == minus || sym == ident){
 				x = Expr();
-				Code.load(x);
-				if (curMeth.type == Tab.noType){
-					error("Void method must not return a value");
-				}else if (!x.type.assignableTo(curMeth.type)){
+				Code.load(x); //Load expression to code buffer
+				if (!x.type.assignableTo(curMeth.type)){ //Ensure return type matches method
 					error("Type of return value must match method type");
 				}
-			}else {
+			}else { //No return value found
 				if (curMeth.type != Tab.noType) error("return value expected");
 			}
 			Code.put(Code.exit);
@@ -347,13 +347,17 @@ public class Parser {
 		}else if (sym == read_){
 			scan();
 			check(lpar);
-			x = Designator();
+			x = Designator(); //Variable to read to
+			if (x.type.kind == Struct.None) error("Read object must be a variable"); //Must be a variable
+			if (x.type.kind != Struct.Int || x.type.kind != Struct.Int) error("Can only read int or char variables"); //Cannot be any other types
 			check(rpar);
 			check(semicolon);
 		}else if (sym == print_){
 			scan();
 			check(lpar);
-			x = Expr();
+			x = Expr(); //Variable to print
+			if (x.type.kind == Struct.None) error("Print object must be a variable");
+			if (x.type.kind != Struct.Int || x.type.kind != Struct.Int) error("Can only print int or char variables");
 			if (sym == comma){
 				scan();
 				check(number);
@@ -368,30 +372,49 @@ public class Parser {
 	}
 
 	//ActPars =  "(" [ Expr {"," Expr} ] ")".
-	private static void ActPars(){
+	private static void ActPars(Operand x){ //Passed the operand which contains the formpars required
 		check(lpar);
+		if (x.kind != Operand.Meth) { //Check the operand is a method
+			error("Not a method");
+			x.obj = Tab.noObj;
+		}
+		Obj fp = x.obj.locals; //Collect the operands formpars
+		int aPars = 0; //Set number of apars collected to 0
+		int fPars = x.obj.nPars; //Set number of expected formpars
 		if (exprStart.get(sym)){
-			Expr();
+			x = Expr();
+			aPars++; //Increment apars
+			if (fp != null){ //check there is a formpar to compare
+				if (!x.type.assignableTo(fp.type)) error("Parameter type mismatch"); //Check for type matching
+				fp = fp.next; //Select next formpar
+			}
 			while (sym == comma){
 					scan();
-					Expr();
+					x = Expr();
+					aPars++;
+					if (fp != null){
+						if (!x.type.assignableTo(fp.type)) error("Parameter type mismatch");
+						fp = fp.next;
+					}
 			}
 		}
+		if (aPars > fPars) error("More acutal parameters than formal parameters"); //Too many parameters
+		if (aPars < fPars) error("Fewer actual parameters than formal parameters"); //Too few parameters
 		check(rpar);
 	}
 
 	//Condition =  Expr Relop Expr.
 	private static int Condition(){
-		int op;
+		int op; //Operator
 		Operand x, y;
 		x = Expr();
-		Code.load(x);
+		Code.load(x); //Load expr to code buffer
 		op = Relop();
 		y = Expr();
-		Code.load(y);
+		Code.load(y); //Load expr to code buffer
 		if (!x.type.compatibleWith(y.type)) error ("Type Mismatch");
 		if (x.type.isRefType() && op != Code.eq && op != Code.ne) error("Invalid Compare");
-		return op;
+		return op; //Return operator to be loaded to code buffer
 	}
 
 	//Relop =  "==" | "!=" | ">" | ">=" | "<" | "<=".
@@ -415,7 +438,7 @@ public class Parser {
 			scan();
 			return Code.le;
 		}else {
-			error("invalid Relop");
+			error("Invalid Relop");
 			return Code.eq;
 		}
 	}
@@ -427,8 +450,8 @@ public class Parser {
 		if (sym == minus) {
 			scan();
 			x = Term();
-			if (x.type != Tab.intType) error("operand must be of type int");
-			if (x.kind == Operand.Con) x.val = - x.val;
+			if (x.type != Tab.intType) error("Operand must be of type int"); //If minus expression it must be an integer to be negative
+			if (x.kind == Operand.Con) x.val = - x.val; //Set to negative
 			else{
 				Code.load(x);
 				Code.put(Code.neg);
@@ -437,12 +460,12 @@ public class Parser {
 		else{
 			x = Term();
 		}
-		while (true){
+		while (true){ //endless loop for repetition in production
 			if (sym == minus){
-				op = Code.sub;
+				op = Code.sub; //Subtraction
 				scan();
 			}else if (sym == plus){
-				op = Code.add;
+				op = Code.add; //Addition
 				scan();
 			} else break;
 			Code.load(x);
@@ -461,15 +484,15 @@ public class Parser {
 		Operand x, y;
 		int op;
 		x = Factor();
-		while (true){
+		while (true){ //Endless loop for repetition in production
 			if (sym == times){
-				op = Code.mul;
+				op = Code.mul; //Multiplcation
 				scan();
 			}else if (sym == slash){
-				op = Code.div;
+				op = Code.div; //Division
 				scan();
 			}else if (sym == rem){
-				op = Code.rem;
+				op = Code.rem; //modulus
 				scan();
 			}else break;
 			Code.load(x);
@@ -497,7 +520,7 @@ public class Parser {
 		} else if (sym == charCon){
 			scan();
 			x = new Operand(t.val);
-			x.type = Tab.charType;
+			x.type = Tab.charType; //Charcon type
 
 		} else if (sym == new_){
 			scan();
@@ -512,7 +535,7 @@ public class Parser {
 				check(rbrack);
 				if (x.type != Tab.intType) error("Array size must be of type int");
 				Code.load(x);
-				Code.put(Code.newarray);
+				Code.put(Code.newarray); //Put array on code buffer
 				if (type == Tab.charType) Code.put(0);
 				else Code.put(1);
 				type = new Struct(Struct.Arr, type);
@@ -521,7 +544,7 @@ public class Parser {
 				Code.put(Code.new_);
 				Code.put2(type.nFields);
 			}
-			x = new Operand(Operand.Stack, 0, type);
+			x = new Operand(Operand.Stack, 0, type); //Create operand
 
 		} else if (sym == lpar){
 			scan();
@@ -529,7 +552,7 @@ public class Parser {
 			check(rpar);
 		}else {
 			error("Invalid Factor");
-			x = new Operand(Operand.Stack, 0, Tab.noType);
+			x = new Operand(Operand.Stack, 0, Tab.noType); //create empty operand to ensure the compiler continues
 		}
 		return x;
 	}
@@ -537,26 +560,26 @@ public class Parser {
 	//Designator =  ident {"." ident | "[" Expr "]"}.
 	private static Operand Designator(){
 		check(ident);
-		Obj obj = Tab.find(t.string);
-		Operand x = new Operand(obj);
+		Obj obj = Tab.find(t.string); //Retrieve ident from symtable
+		Operand x = new Operand(obj); //Create a new operand from the returned object
 		for (;;){
 			if (sym == period){
 				scan();
 				check(ident);
 				String fname = t.string;
-				if (x.type.kind == Struct.Class){
+				if (x.type.kind == Struct.Class){ //Check that it is a class otherwise error
 					Code.load(x);
-					Obj fld = Tab.findField(fname, x.type);
-					x.kind = Operand.Fld;
-					x.adr = fld.adr;
-					x.type = fld.type;
+					Obj fld = Tab.findField(fname, x.type); //Retrieve the field from the class
+					x.kind = Operand.Fld; //Set to kind field
+					x.adr = fld.adr; //Set address to field address
+					x.type = fld.type; //Set type to returned field type
 				}else error(name + "is not an Object");
 
 			} else if (sym == lbrack) {
-				Code.load(x);
-				scan();
-				Operand y = Expr();
-				if (x.type.kind == Struct.Arr){
+				scan();				
+				if (x.type.kind == Struct.Arr){ //Check is array otherwise error
+					Code.load(x);
+					Operand y = Expr();
 					if (y.type.kind != Struct.Int) error("Index must be of type int");
 					Code.load(y);
 					x.kind = Operand.Elem;
@@ -579,7 +602,7 @@ public class Parser {
 		s.set(ident); s.set(if_); s.set(while_); s.set(read_);
 		s.set(return_); s.set(print_); s.set(lbrace); s.set(semicolon);
 
-		s = new BitSet(64); statSync = s;
+		s = new BitSet(64); statSync = s; //Statement sync set
 		s.set(eof); s.set(if_); s.set(while_); s.set(read_);
 		s.set(return_); s.set(print_); s.set(lbrace); s.set(semicolon);
 

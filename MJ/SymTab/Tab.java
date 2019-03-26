@@ -1,7 +1,3 @@
-/* MicroJava Symbol Table  (HM 06-12-28)
-   ======================
-This class manages scopes and inserts and retrieves objects.
-*/
 package MJ.SymTab;
 
 import java.lang.*;
@@ -63,23 +59,23 @@ public class Tab {
 
 	// Retrieve the object with the given name from the top scope
 	public static Obj find(String name) {
-		for (Scope s = curScope; s != null; s = s.outer){
-			for (Obj p = s.locals; p != null; p = p.next){
-				if (p.name.equals(name)) return p;
+		for (Scope s = curScope; s != null; s = s.outer){ //Search currentscope and then its outerscope until scope is null
+			for (Obj p = s.locals; p != null; p = p.next){ //Search through all variables in scope
+				if (p.name.equals(name)) return p; //Return p if found
 				}
 		}
 		error(name + " is undeclared");
-		return noObj;
+		return noObj; //Return noObj to prevent compiler crashing
 	}
 
 
 	// Retrieve a class field with the given name from the fields of "type"
 	public static Obj findField(String name, Struct type) {
-		for(Obj p = type.fields; p != null; p = p.next){
-			if (p.name.equals(name)) return p;
+		for(Obj p = type.fields; p != null; p = p.next){ //Search all fields of the type
+			if (p.name.equals(name)) return p; //Return field if found
 		}
 		error(name + " is not a field");
-		return noObj;
+		return noObj; //Prevent compiler crashing
 	}
 
 	//---------------- methods for dumping the symbol table --------------

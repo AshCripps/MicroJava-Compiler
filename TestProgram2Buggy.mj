@@ -1,0 +1,23 @@
+program TestTwo
+  //Create a point object and initialise all its values
+  class Point{
+    int x;
+    int y;
+  }
+  Point p;
+{
+  void main()
+    int i;
+  {
+    i = 0;
+    j = 10;
+    p = new Point;
+    p.x = 0;
+    p.y = 1;
+    p.z = new int[j];
+    while (i < j) {
+      p.z[i] = 0;
+      i = i + 1;
+    }
+  }
+}

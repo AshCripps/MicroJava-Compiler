@@ -1,0 +1,52 @@
+// identifiers
+a
+aabbcc
+b
+ident2
+
+// numbers
+10
+6400
+355
+
+// character constants
+'a'
+'b'
+'c'
+'\r'
+
+// operators
++
+-
+*
+/
+%
+==
+!=
+<
+<=
+>
+>=
+=
+;
+,
+.
+(
+)
+[
+]
+{
+}
+
+// keywords
+class
+else
+final
+if
+new
+print
+program
+read
+return
+void
+while

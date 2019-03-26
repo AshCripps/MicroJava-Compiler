@@ -1,6 +1,3 @@
-/* MicroJava Scanner (HM 06-12-28)
-   =================
-*/
 package MJ;
 import java.io.*;
 import java.util.*;
@@ -87,6 +84,7 @@ public class Scanner {
 		while (ch <= ' ') nextCh();  // skip blanks, tabs, eols
 		Token t = new Token(); t.line = line; t.col = col;
 		switch(ch){
+			//All possible letters
 			case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i':
       case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
       case 's': case 't': case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
@@ -96,6 +94,7 @@ public class Scanner {
 				readName(t);
 				break;
 
+				//All possible numbers
 			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 				readNumber(t);
 				break;
@@ -114,7 +113,7 @@ public class Scanner {
 
 			case '=':
 				nextCh();
-				if (ch == '=') {
+				if (ch == '=') { //Check if assignment or equality comparison
 					nextCh();
 					t.kind = eql;
 				} else t.kind = assign;
@@ -126,7 +125,7 @@ public class Scanner {
 
 			case '/':
 				nextCh();
-				if (ch == '/') {
+				if (ch == '/') { //Check for comments
 					do nextCh();
 					while (ch != '\n' && ch != eofCh);
 					t = next();  // call scanner recursively
@@ -189,6 +188,10 @@ public class Scanner {
 				nextCh(); t.kind = times;
 				break;
 
+			case '%':
+				nextCh(); t.kind = rem;
+				break;
+
 			case '!':
 				nextCh();
 				if (ch == '='){
@@ -211,12 +214,13 @@ public class Scanner {
 	}
 
 	private static void readName(Token t){
+		//Only reached if the first char is a letter
 		t.string = "";
-		while (Character.isLetterOrDigit(ch)) {
+		while (Character.isLetterOrDigit(ch)) { //Names can be letters or digits but start with letters
 			t.string += ch;
 			nextCh();
 		}
-		int index = Arrays.binarySearch(key, t.string);
+		int index = Arrays.binarySearch(key, t.string); //Fast search to check if keyword
 		if (index < 0){ //not found
 			t.kind = ident;
 		} else {
@@ -227,15 +231,14 @@ public class Scanner {
 
 	private static void readNumber(Token t){
 		t.string = "";
-		//while (ch != ' ' && ch != '\n' && ch != eofCh){
 		while (Character.isDigit(ch)){
-				t.string += ch;
+				t.string += ch; //Add digits to a string
 				nextCh();
 		}
 		try {
-			t.val = Integer.parseInt(t.string);
+			t.val = Integer.parseInt(t.string); //Convert string to a int
 			t.kind = number;
-		}catch (NumberFormatException e) {
+		}catch (NumberFormatException e) { //Catch any number errors
 			t.kind = none;
 			System.err.println("Number Error");
 		}
@@ -256,12 +259,12 @@ public class Scanner {
 		nextCh();
 
 		if (t.string.length() == 2){
-			if (t.string.charAt(0) != '\\'){
-				System.err.println("Unexpected \\");
+			if (t.string.charAt(0) != '\\'){ //Must start with backslash
+				System.err.println("Expected a \\");
 				t.kind = charCon;
 				return;
 			} else {
-				if (t.string.charAt(1) != 'r' && t.string.charAt(1) != 'n' && t.string.charAt(1) != 't'){
+				if (t.string.charAt(1) != 'r' && t.string.charAt(1) != 'n' && t.string.charAt(1) != 't'){ //Only valid escape chars
 					System.err.println("Not valid escape character");
 					t.kind = charCon;
 					return;
@@ -270,10 +273,10 @@ public class Scanner {
 					t.val = t.string.chars().sum();
 				}
 			}
-		} else if (t.string.length() == 1){
-			if (Character.isLetter(t.string.charAt(0))){
+		} else if (t.string.length() == 1){ //Char
+			if (Character.isLetter(t.string.charAt(0))){ //must be a letter
 				t.kind = charCon;
-				t.val = t.string.chars().sum();
+				t.val = t.string.chars().sum(); //Convert to unicode value
 			}else {
 				System.err.println("Not a valid char");
 				t.kind = charCon;

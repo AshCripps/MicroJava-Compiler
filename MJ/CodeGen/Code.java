@@ -1,9 +1,3 @@
-/* MicroJava Code Generator  (HM 06-12-28)
-   ========================
-This class holds the code buffer with its access primitives get* and put*.
-It also holds methods to load operands and to generate complex instructions
-such as assignments and jumps.
-*/
 package MJ.CodeGen;
 
 import java.io.*;
@@ -113,18 +107,18 @@ public class Code {
 	public static void load(Operand x) {
 		switch (x.kind) {
 		case Operand.Con:
-			if (0 <= x.val && x.val <= 5) put(const0+ x.val);
+			if (0 <= x.val && x.val <= 5) put(const0+ x.val); //More efficent put
 			else if (x.val == -1) put(const_m1);
 			else {
 				put(const_);
 				put4(x.val);
 			}
 			break;
-		case Operand.Static:
+		case Operand.Static: //Static operand
 			put(getstatic);
 			put2(x.adr);
 			break;
-		case Operand.Local:
+		case Operand.Local: //Local vars
 			if (0 <= x.adr && x.adr <= 3) put(load0+ x.adr);
 			else {
 				put(load);
@@ -176,8 +170,8 @@ public class Code {
 
 	// Unconditional jump
 	public static void putJump(int adr) {
-		put(jmp);
-		put2(adr);
+		put(jmp); //Put jump instruction in Buffer
+		put2(adr); //Put location of where to jump too
 	}
 
 	// Conditional jump if op is false

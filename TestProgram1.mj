@@ -1,0 +1,15 @@
+program Test
+{
+  //Print the first 20 items in the 10 times table
+  void main()
+    int x, i, j;
+  {
+    x = 0;
+    i = 0;
+    while (i < 20){
+      x = i * 10;
+      print(x);
+      i = i + 1;
+    }
+  }
+}
